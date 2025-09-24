@@ -1,0 +1,54 @@
+name: Production Terraform apply
+
+on:
+  workflow_dispatch:        # Allow manual triggering
+
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - terraform/live/production/**
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_PRODUCTION }}
+
+jobs:
+  apply_changes:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/gha-terraform-prod
+          role-session-name: terraform-apply
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        id: init
+        run: |
+          terraform init -input=false
+        working-directory: terraform/live/production/
+
+      - name: Terraform Apply
+        timeout-minutes: 60  # Set timeout to 1 hour
+        run: terraform apply -input=false --auto-approve
+        working-directory: terraform/live/production/

@@ -1,0 +1,81 @@
+name: Production Terraform destroy
+
+on:
+  workflow_dispatch:        # Allow manual triggering of the workflow
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_PRODUCTION }}
+
+jobs:
+  lint:
+    name: TFLint Inspection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Show version
+        run: tflint --version
+
+      - name: Init TFLint
+        run: tflint --init
+        working-directory: terraform/live/production
+      
+      - name: Run TFLint
+        run: tflint
+        working-directory: terraform/live/production
+        
+      - name: Run TFLint for All Modules
+        run: |
+          find modules -type f -name "main.tf" -exec dirname {} \; | sort -u | while read dir; do
+            echo "Running TFLint in $dir"
+            if [ -f "$dir/.tflint.hcl" ]; then
+              tflint --config "$dir/.tflint.hcl" --chdir "$dir"
+            else
+              tflint --chdir "$dir"
+            fi
+          done
+        working-directory: terraform
+          
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: production
+    needs: lint  # Run only after the lint job succeeds
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Install Terraform CLI
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Configure AWS credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/gha-terraform-prod
+        role-session-name: terraform-destroy
+        aws-region: us-east-1
+
+    # Initialize Terraform in the working directory
+    - name: Terraform Init
+      run: terraform init
+      working-directory: terraform/live/production
+
+    # Apply Terraform configuration in the working directory
+    - name: Terraform Destroy
+      timeout-minutes: 60  # Set timeout to 1 hour
+      run: terraform destroy -auto-approve -input=false
+      working-directory: terraform/live/production
