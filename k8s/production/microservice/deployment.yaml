@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-microservice
+  namespace: microservice
+  labels:
+    app: python-microservice
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: python-microservice
+  template:
+    metadata:
+      labels:
+        app: python-microservice
+        version: v1
+    spec:
+      nodeSelector:
+        Purpose: application-workloads
+      tolerations:
+      - key: "type"
+        operator: "Equal"
+        value: "application-workloads"
+        effect: "NoSchedule"
+      containers:
+      - name: python-microservice
+        image: 381492097033.dkr.ecr.us-east-1.amazonaws.com/python-microservice:v2.0.0
+        ports:
+        - containerPort: 5000
+          name: http
+        env:
+        - name: FLASK_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: microservice-config
+              key: FLASK_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: microservice-config
+              key: PORT
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: microservice-config
+              key: LOG_LEVEL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3

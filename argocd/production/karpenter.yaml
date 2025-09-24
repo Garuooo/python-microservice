@@ -1,0 +1,81 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter-with-crds
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: karpenter-with-crds
+    app.kubernetes.io/part-of: observability-stack
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/aws/karpenter
+      path: charts/karpenter
+      targetRevision: v1.5.0
+      helm:
+        releaseName: karpenter
+        valueFiles:
+          - $values/k8s/production/helm-values/karpenter.yaml
+    - repoURL: https://github.com/Garuooo/task  # Update with your repo URL
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      selfHeal: false
+      prune: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PruneProgationPolicy=foreground
+      - PruneLast=false
+      - Replace=false
+      - ApplyOutOfSyncOnly=false
+      - ServerSideApply=false
+      - RespectIgnoreDifferences=false # whether to ignore differences while syncing or not, used when explicitly use ignoredifference feature
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 3 
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: karpenter
+    app.kubernetes.io/part-of: infrastructure-stack
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Garuooo/task'   # <-- Update if your repo URL is different
+    targetRevision: HEAD
+    path: k8s/production/karpenter
+    directory:
+      recurse: true
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: karpenter
+  syncPolicy:
+    automated:
+      selfHeal: false
+      prune: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PruneProgationPolicy=foreground
+      - PruneLast=false
+      - Replace=false
+      - ApplyOutOfSyncOnly=false
+      - ServerSideApply=false
+      - RespectIgnoreDifferences=false # whether to ignore differences while syncing or not, used when explicitly use ignoredifference feature
+  revisionHistoryLimit: 3

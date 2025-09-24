@@ -1,0 +1,64 @@
+clusterName: observability-eks
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::381492097033:role/microservice-production-aws-lbc
+
+region: us-east-1
+vpcId: vpc-0ca714b4dedf7ffa4
+
+# Enable additional logging for debugging
+enableLogging: true
+logLevel: debug
+
+# Explicitly specify subnets for Load Balancer placement
+# This helps when auto-discovery fails
+# defaultTags:
+#   "kubernetes.io/cluster/observability-eks": "owned"
+
+# Resource limits for the controller
+resources:
+  limits:
+    cpu: 200m
+    memory: 500Mi
+  requests:
+    cpu: 100m
+    memory: 200Mi
+
+# Node selector for infrastructure workloads
+nodeSelector:
+  Purpose: general-workloads
+
+# Tolerations for observability nodes
+tolerations:
+  - key: "type"
+    operator: "Equal"
+    value: "self-managed"
+    effect: "NoSchedule"
+
+  - key: "recovery"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+affinity: 
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: type
+              operator: In
+              values: ["self-managed"]
+            - key: Purpose
+              operator: In
+              values: ["general-workloads"]
+              
+      - weight: 50
+        preference:
+          matchExpressions:
+            - key: recovery
+              operator: In
+              values: ["true"]

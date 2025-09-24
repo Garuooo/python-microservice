@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+    app.kubernetes.io/part-of: observability-stack
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: "65.7.0"
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/k8s/production/helm-values/kube-prometheus-stack.yaml
+    - repoURL: https://github.com/Garuooo/task  # Update with your repo URL
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      selfHeal: false
+      prune: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PruneProgationPolicy=foreground
+      - PruneLast=false
+      - Replace=false
+      - ApplyOutOfSyncOnly=false
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=false # whether to ignore differences while syncing or not, used when explicitly use ignoredifference feature
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+  - jsonPointers:
+    - /spec/volumeName
+    - /spec/storageClassName
+    kind: PersistentVolumeClaim
+  revisionHistoryLimit: 3 

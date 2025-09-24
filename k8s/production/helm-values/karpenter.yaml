@@ -1,0 +1,33 @@
+crds:
+  create: true
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::381492097033:role/KarpenterController-20250924085335398900000018"
+      
+settings:
+  clusterName: "microservice-production"
+  interruptionQueue: "Karpenter-microservice-production"
+  clusterEndpoint: "https://ADAACEEDFA0B5D5CBCF91AEBECE98C1E.gr7.us-east-1.eks.amazonaws.com"
+webhook:
+  enabled: false
+controller:
+  resources:
+    requests:
+      cpu: "1"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+nodeSelector:
+  karpenter.sh/controller: 'true'
+
+tolerations:
+  - key: "type"
+    operator: "Equal"
+    value: "self-managed"
+    effect: "NoSchedule"
+    
+
+dnsPolicy: Default

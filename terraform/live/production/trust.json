@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Federated": "arn:aws:iam::992382821183:oidc-provider/token.actions.githubusercontent.com" },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:Garuooo/task:ref:refs/heads/*",
+            "repo:Garuooo/task:ref:refs/tags/*",
+            "repo:Garuooo/task:environment:*",
+            "repo:Garuooo/task:pull_request",
+            "repo:Garuooo/task:workflow_run"
+          ]
+        }
+      }
+    }
+  ]
+}

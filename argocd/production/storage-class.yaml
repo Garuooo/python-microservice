@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: storage-class
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: storage-class
+    app.kubernetes.io/part-of: observability-stack
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Garuooo/task  # Update with your repo URL
+    targetRevision: HEAD
+    path: k8s/production/storage-class
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default  # StorageClass is cluster-scoped, but we can set a default namespace
+  syncPolicy:
+    automated:
+      selfHeal: false
+      prune: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PruneProgationPolicy=foreground
+      - PruneLast=false
+      - Replace=false
+      - ApplyOutOfSyncOnly=false
+      - ServerSideApply=false
+      - RespectIgnoreDifferences=false # whether to ignore differences while syncing or not, used when explicitly use ignoredifference feature
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 3 

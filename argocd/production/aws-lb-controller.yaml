@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/part-of: infrastructure-stack
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://aws.github.io/eks-charts
+      chart: aws-load-balancer-controller
+      targetRevision: "1.7.2"
+      helm:
+        releaseName: aws-load-balancer-controller
+        valueFiles:
+          - $values/k8s/production/helm-values/aws-lb-controller.yaml
+    - repoURL: https://github.com/Garuooo/task  # Update with your repo URL
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      selfHeal: false
+      prune: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PruneProgationPolicy=foreground
+      - PruneLast=false
+      - Replace=false
+      - ApplyOutOfSyncOnly=false
+      - ServerSideApply=false
+      - RespectIgnoreDifferences=false # whether to ignore differences while syncing or not, used when explicitly use ignoredifference feature
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  # ignoreDifferences:
+    # - group: apps
+      # kind: Deployment
+      # jsonPointers:
+        # - /spec/replicas
+    # - group: ""
+      # kind: Secret
+      # name: aws-load-balancer-tls
+      # jsonPointers:
+        # - /data
+  revisionHistoryLimit: 3 
